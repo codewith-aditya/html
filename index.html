@@ -984,6 +984,9 @@
             document.getElementById('artifactsPanel').classList.toggle('collapsed');
         }
 
+        // API Configuration
+        const API_URL = "https://517bdc648c8c.ngrok-free.app/chat"; // Kaggle Ngrok URL
+
         // Chat Actions
         async function sendMessage() {
             const input = document.getElementById('userInput');
@@ -1013,9 +1016,12 @@
             let fullResponse = "";
 
             try {
-                const response = await fetch('/chat', {
+                const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
                     body: JSON.stringify({
                         message,
                         model_name: selectedModel,
