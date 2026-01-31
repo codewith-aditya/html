@@ -4,11 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraGPT - AI Assistant</title>
+    <title>AstraGPT - AI Coding Assistant Platform</title>
 
     <!-- External Libraries -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         * {
@@ -27,8 +36,10 @@
             --accent-hover: #0d8c6d;
             --border: #3a3a3a;
             --error: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --info: #3b82f6;
             --sidebar-width: 260px;
-            --artifacts-width: 400px;
         }
 
         body {
@@ -39,8 +50,8 @@
             overflow: hidden;
         }
 
-        /* Main Layout */
-        .app-container {
+        /* Main Container */
+        .platform-container {
             display: flex;
             height: 100vh;
         }
@@ -52,104 +63,94 @@
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
         }
 
         .sidebar.collapsed {
             transform: translateX(-100%);
         }
 
-        .sidebar-header {
-            padding: 1rem;
+        .sidebar-brand {
+            padding: 1.5rem;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
-        .new-chat-btn {
-            width: 100%;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.75rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #059669);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-            transition: background 0.2s;
+            font-size: 1.5rem;
+            font-weight: bold;
         }
 
-        .new-chat-btn:hover {
-            background: var(--accent-hover);
+        .brand-text h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.2rem;
         }
 
-        .chat-history {
+        .brand-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .sidebar-nav {
             flex: 1;
             overflow-y: auto;
-            padding: 0.5rem;
+            padding: 1rem;
         }
 
-        .chat-history::-webkit-scrollbar {
-            width: 6px;
+        .nav-section {
+            margin-bottom: 2rem;
         }
 
-        .chat-history::-webkit-scrollbar-thumb {
-            background: var(--bg-tertiary);
-            border-radius: 3px;
+        .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
         }
 
-        .chat-item {
-            padding: 0.75rem;
-            margin-bottom: 0.25rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
+        .nav-item {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            group: hover;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .chat-item:hover {
+        .nav-item:hover {
             background: var(--bg-tertiary);
         }
 
-        .chat-item.active {
+        .nav-item.active {
             background: var(--bg-tertiary);
             border-left: 3px solid var(--accent);
         }
 
-        .chat-item-title {
+        .nav-item-icon {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-item-text {
             flex: 1;
             font-size: 0.9rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .chat-item-actions {
-            display: none;
-            gap: 0.25rem;
-        }
-
-        .chat-item:hover .chat-item-actions {
-            display: flex;
-        }
-
-        .chat-item-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-
-        .chat-item-btn:hover {
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            font-weight: 500;
         }
 
         .sidebar-footer {
@@ -161,8 +162,8 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            padding: 0.5rem;
-            border-radius: 8px;
+            padding: 0.75rem;
+            border-radius: 10px;
             cursor: pointer;
             transition: background 0.2s;
         }
@@ -172,8 +173,8 @@
         }
 
         .user-avatar {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
@@ -182,17 +183,246 @@
             font-weight: 600;
         }
 
-        /* Main Chat Area */
-        .main-area {
+        /* Main Content Area */
+        .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        .top-header {
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .menu-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            display: none;
+        }
+
+        .page-title h1 {
+            font-size: 1.3rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .page-title p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
+        }
+
+        /* Split View Container */
+        .split-view {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Code Editor Panel */
+        .code-editor-panel {
+            flex: 1;
+            display: none;
+            /* Initially hidden */
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            min-width: 400px;
+        }
+
+        .code-editor-panel.active {
+            display: flex;
+        }
+
+        .editor-header {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .editor-tab {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .editor-tab.active {
+            background: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .editor-tab:hover {
+            border-color: var(--accent);
+        }
+
+        .language-selector {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .editor-toolbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .code-editor-container {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .editor-footer {
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .footer-info {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            width: 100%;
+            /* Full width initially */
+        }
+
+        .code-editor-panel.active~.resizer,
+        .code-editor-panel.active~.chat-panel {
+            min-width: 400px;
+            width: auto;
         }
 
         .chat-header {
-            background: rgba(26, 26, 26, 0.8);
-            backdrop-filter: blur(10px);
+            background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
             padding: 1rem 1.5rem;
             display: flex;
@@ -201,29 +431,19 @@
         }
 
         .chat-title {
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
         }
 
-        .header-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .header-btn {
-            background: transparent;
+        .model-selector {
+            background: var(--bg-tertiary);
             border: 1px solid var(--border);
-            color: var(--text-secondary);
+            color: var(--text-primary);
             padding: 0.5rem 1rem;
             border-radius: 8px;
-            cursor: pointer;
             font-size: 0.85rem;
-            transition: all 0.2s;
-        }
-
-        .header-btn:hover {
-            border-color: var(--accent);
-            color: var(--accent);
+            cursor: pointer;
+            outline: none;
         }
 
         .chat-messages {
@@ -300,18 +520,6 @@
             position: relative;
         }
 
-        .message-content code {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-        }
-
-        .message-content p code {
-            background: var(--bg-tertiary);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
-
         .copy-btn {
             position: absolute;
             top: 0.5rem;
@@ -331,24 +539,24 @@
             color: white;
         }
 
-        .input-container {
+        .chat-input-container {
             background: var(--bg-secondary);
             border-top: 1px solid var(--border);
             padding: 1.5rem;
         }
 
         .input-wrapper {
+            position: relative;
             max-width: 900px;
             margin: 0 auto;
-            position: relative;
         }
 
-        .input-box {
+        .chat-input {
             width: 100%;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 1rem 3.5rem 1rem 1rem;
+            padding: 1rem 8rem 1rem 1rem;
             color: var(--text-primary);
             font-size: 1rem;
             resize: none;
@@ -359,17 +567,22 @@
             font-family: inherit;
         }
 
-        .input-box:focus {
+        .chat-input:focus {
             border-color: var(--accent);
         }
 
-        .send-btn {
+        .input-actions {
             position: absolute;
             right: 0.75rem;
             bottom: 0.75rem;
-            background: var(--accent);
-            border: none;
-            color: white;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
             width: 36px;
             height: 36px;
             border-radius: 8px;
@@ -380,7 +593,17 @@
             transition: all 0.2s;
         }
 
-        .send-btn:hover:not(:disabled) {
+        .input-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .send-btn {
+            background: var(--accent);
+            color: white;
+        }
+
+        .send-btn:hover {
             background: var(--accent-hover);
         }
 
@@ -389,148 +612,362 @@
             cursor: not-allowed;
         }
 
-        /* Artifacts Panel */
-        .artifacts-panel {
-            width: var(--artifacts-width);
-            background: var(--bg-secondary);
-            border-left: 1px solid var(--border);
+        /* Floating Action Button */
+        .fab-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+
+        .fab-main {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #059669);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 8px 24px rgba(16, 163, 127, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fab-main:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 12px 32px rgba(16, 163, 127, 0.6);
+        }
+
+        .fab-main.active {
+            transform: rotate(45deg);
+        }
+
+        .fab-options {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            gap: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .artifacts-panel.collapsed {
-            transform: translateX(100%);
+        .fab-options.active {
+            opacity: 1;
+            pointer-events: all;
         }
 
-        .artifacts-header {
-            padding: 1rem;
+        .fab-option {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: fabSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+
+        .fab-option:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .fab-option:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .fab-option:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+
+        .fab-option:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+
+        .fab-option:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+
+        @keyframes fabSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fab-label {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .fab-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+
+        .fab-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .fab-btn.primary {
+            background: linear-gradient(135deg, var(--accent), #059669);
+            color: white;
+        }
+
+        .fab-btn.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .fab-btn.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .fab-btn.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .fab-btn.danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .artifacts-title {
+        .modal-title {
+            font-size: 1.2rem;
             font-weight: 600;
-            font-size: 0.9rem;
         }
 
-        .close-artifacts {
+        .modal-close {
             background: transparent;
             border: none;
             color: var(--text-secondary);
+            font-size: 1.5rem;
             cursor: pointer;
-            padding: 0.25rem;
-            font-size: 1.2rem;
-        }
-
-        .artifacts-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .artifact-item {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
+            width: 32px;
+            height: 32px;
             border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .artifact-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-        }
-
-        .artifact-type {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-
-        .artifact-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .artifact-btn {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.75rem;
+            justify-content: center;
             transition: all 0.2s;
         }
 
-        .artifact-btn:hover {
-            background: var(--accent);
-            color: white;
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
             border-color: var(--accent);
         }
 
-        .artifact-code {
-            background: var(--bg-primary);
-            border-radius: 6px;
-            padding: 0.75rem;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Resizer */
+        .resizer {
+            width: 4px;
+            background: var(--border);
+            cursor: col-resize;
+            transition: background 0.2s;
+            display: none;
+            /* Initially hidden */
+        }
+
+        .resizer.active {
+            display: block;
+        }
+
+        .resizer:hover {
+            background: var(--accent);
         }
 
         /* Mobile Responsive */
+        @media (max-width: 1024px) {
+            .split-view {
+                flex-direction: column;
+            }
+
+            .code-editor-panel,
+            .chat-panel {
+                min-width: 100%;
+                flex: none;
+                height: 50vh;
+            }
+
+            .resizer {
+                width: 100%;
+                height: 4px;
+                cursor: row-resize;
+            }
+        }
+
         @media (max-width: 768px) {
             .sidebar {
-                position: absolute;
-                left: 0;
-                top: 0;
-                height: 100%;
-                z-index: 100;
-            }
-
-            .artifacts-panel {
-                position: absolute;
-                right: 0;
-                top: 0;
-                height: 100%;
-                z-index: 100;
-            }
-
-            .mobile-overlay {
-                display: none;
                 position: fixed;
-                top: 0;
                 left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 99;
+                top: 0;
+                height: 100%;
+                z-index: 200;
             }
 
-            .mobile-overlay.active {
-                display: block;
-            }
-        }
-
-        /* Hamburger Menu */
-        .menu-toggle {
-            display: none;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.5rem;
-        }
-
-        @media (max-width: 768px) {
             .menu-toggle {
                 display: block;
             }
+
+            .fab-container {
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .fab-main {
+                width: 56px;
+                height: 56px;
+            }
+        }
+
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+        }
+
+        .mobile-overlay.active {
+            display: block;
         }
 
         /* Empty State */
@@ -541,13 +978,12 @@
             margin: 0 auto;
         }
 
-        .empty-state h1 {
-            font-size: 2rem;
+        .empty-state h2 {
+            font-size: 1.8rem;
             margin-bottom: 1rem;
             background: linear-gradient(135deg, var(--accent), #059669);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .empty-state p {
@@ -586,308 +1022,430 @@
             color: var(--text-secondary);
             margin: 0;
         }
-
-        /* Model Selector */
-        .model-selector {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        .model-selector:hover {
-            border-color: var(--accent);
-        }
-
-        .model-selector:focus {
-            border-color: var(--accent);
-        }
     </style>
 </head>
 
 <body>
-    <div class="app-container">
+    <div class="platform-container">
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <button class="new-chat-btn" onclick="createNewChat()">
-                    <span>➕</span>
-                    <span>New Chat</span>
-                </button>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">A</div>
+                <div class="brand-text">
+                    <h2>AstraGPT</h2>
+                    <p>AI Coding Platform</p>
+                </div>
             </div>
 
-            <div class="chat-history" id="chatHistory">
-                <!-- Chat items will be inserted here -->
-            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Workspace</div>
+                    <div class="nav-item" onclick="toggleCodeEditor()">
+                        <span class="nav-item-icon">💻</span>
+                        <span class="nav-item-text">Toggle Code Editor</span>
+                    </div>
+                    <div class="nav-item active">
+                        <span class="nav-item-icon">💬</span>
+                        <span class="nav-item-text">AI Chat</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Projects</div>
+                    <div class="nav-item">
+                        <span class="nav-item-icon">📁</span>
+                        <span class="nav-item-text">My Projects</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-item-icon">⭐</span>
+                        <span class="nav-item-text">Favorites</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-item-icon">🕒</span>
+                        <span class="nav-item-text">Recent</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <div class="nav-item">
+                        <span class="nav-item-icon">🔧</span>
+                        <span class="nav-item-text">Settings</span>
+                    </div>
+                    <div class="nav-item">
+                        <span class="nav-item-icon">📚</span>
+                        <span class="nav-item-text">Documentation</span>
+                    </div>
+                </div>
+            </nav>
 
             <div class="sidebar-footer">
                 <div class="user-profile">
-                    <div class="user-avatar">U</div>
+                    <div class="user-avatar">D</div>
                     <div>
-                        <div style="font-size: 0.9rem; font-weight: 600;">User</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Free Plan</div>
+                        <div style="font-size: 0.9rem; font-weight: 600;">Developer</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Pro Plan</div>
                     </div>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Main Chat Area -->
-        <div class="main-area">
-            <div class="chat-header">
-                <div style="display: flex; align-items: center; gap: 1rem;">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
                     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-                    <div class="chat-title" id="chatTitle">New Chat</div>
-                    <select class="model-selector" id="modelSelector" onchange="handleModelChange()"
-                        title="Select AI Model">
-                        <option value="deepseek-coder:6.7b">AstraGPT-Coder-V1 (6.7B) ⚡ Fast</option>
-                        <option value="deepseek-coder-v2:16b">AstraGPT-Coder-V2 (16B) 🚀 Powerful</option>
-                    </select>
+                    <div class="page-title">
+                        <h1>AI Coding Assistant</h1>
+                        <p>Write, test, and deploy code with AI assistance</p>
+                    </div>
                 </div>
                 <div class="header-actions">
-                    <button class="header-btn" onclick="shareChat()">🔗 Share</button>
-                    <button class="header-btn" onclick="exportChat()">📥 Export</button>
-                    <button class="header-btn" onclick="toggleArtifacts()">📄 Artifacts</button>
+                    <button class="icon-btn" title="Toggle Code Editor" onclick="toggleCodeEditor()">💻</button>
+                    <button class="icon-btn" title="Run Code" onclick="runCode()">▶️</button>
+                    <button class="icon-btn" title="Save">💾</button>
+                    <button class="icon-btn" title="Share">🔗</button>
+                    <button class="btn btn-primary" onclick="openModal('deploy')">
+                        <span>🚀</span>
+                        Deploy
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            <div class="chat-messages" id="chatMessages">
-                <div class="empty-state" id="emptyState">
-                    <h1>Welcome to AstraGPT</h1>
-                    <p>Your AI coding assistant powered by Tantra AI Labs</p>
+            <!-- Split View -->
+            <div class="split-view">
+                <!-- Code Editor Panel -->
+                <div class="code-editor-panel">
+                    <div class="editor-header">
+                        <div class="editor-tabs">
+                            <div class="editor-tab active">
+                                <span>📄</span>
+                                main.py
+                            </div>
+                            <button class="icon-btn" style="width: 32px; height: 32px;" onclick="newFile()">+</button>
+                        </div>
+                        <select class="language-selector" id="languageSelector" onchange="changeLanguage()">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                        </select>
+                    </div>
 
-                    <div class="example-prompts">
-                        <div class="example-card" onclick="useExample('Write a Python function to reverse a string')">
-                            <h3>💻 Code Generation</h3>
-                            <p>Write a Python function</p>
+                    <div class="editor-toolbar">
+                        <button class="tool-btn" onclick="formatCode()">
+                            <span>✨</span>
+                            Format
+                        </button>
+                        <button class="tool-btn" onclick="analyzeCode()">
+                            <span>🔍</span>
+                            Analyze
+                        </button>
+                        <button class="tool-btn" onclick="optimizeCode()">
+                            <span>⚡</span>
+                            Optimize
+                        </button>
+                        <button class="tool-btn" onclick="debugCode()">
+                            <span>🐛</span>
+                            Debug
+                        </button>
+                    </div>
+
+                    <div class="code-editor-container">
+                        <textarea id="codeEditor"># Welcome to AstraGPT Code Editor
+# Write your code here or ask AI for help
+
+def greet(name):
+    """
+    A simple greeting function
+    """
+    return f"Hello, {name}! Welcome to AstraGPT!"
+
+# Test the function
+if __name__ == "__main__":
+    message = greet("Developer")
+    print(message)
+</textarea>
+                    </div>
+
+                    <div class="editor-footer">
+                        <div class="footer-info">
+                            <span>Lines: <strong id="lineCount">12</strong></span>
+                            <span>Characters: <strong id="charCount">256</strong></span>
+                            <span>Language: <strong id="currentLang">Python</strong></span>
                         </div>
-                        <div class="example-card" onclick="useExample('Explain async/await in JavaScript')">
-                            <h3>📚 Explanations</h3>
-                            <p>Explain concepts</p>
+                        <div>
+                            <span>Ln <strong id="cursorLine">1</strong>, Col <strong id="cursorCol">1</strong></span>
                         </div>
-                        <div class="example-card" onclick="useExample('Debug this code')">
-                            <h3>🐛 Debugging</h3>
-                            <p>Help fix errors</p>
+                    </div>
+                </div>
+
+                <!-- Resizer -->
+                <div class="resizer" id="resizer"></div>
+
+                <!-- Chat Panel -->
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <div class="chat-title">AI Assistant</div>
+                        <select class="model-selector" id="modelSelector" onchange="handleModelChange()">
+                            <option value="deepseek-coder:6.7b">AstraGPT Coder V1 (6.7B) ⚡</option>
+                            <option value="deepseek-coder-v2:16b">AstraGPT Coder V2 (16B) 🚀</option>
+                        </select>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state">
+                            <h2>👋 Hi! I'm your AI coding assistant</h2>
+                            <p>Ask me anything about your code, or try these examples:</p>
+                            <div class="example-prompts">
+                                <div class="example-card" onclick="useExample('Explain this code')">
+                                    <h3>📖 Explain Code</h3>
+                                    <p>Understand what your code does</p>
+                                </div>
+                                <div class="example-card" onclick="useExample('Find bugs in my code')">
+                                    <h3>🐛 Find Bugs</h3>
+                                    <p>Identify potential issues</p>
+                                </div>
+                                <div class="example-card" onclick="useExample('Optimize this function')">
+                                    <h3>⚡ Optimize</h3>
+                                    <p>Make it faster and better</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <div class="input-wrapper">
+                            <textarea class="chat-input" id="chatInput" placeholder="Ask about your code..." rows="1"
+                                onkeydown="handleChatKeyPress(event)" oninput="autoResize(this)"></textarea>
+                            <div class="input-actions">
+                                <button class="input-btn" title="Attach Code" onclick="attachCode()">📎</button>
+                                <button class="input-btn" title="Voice Input">🎤</button>
+                                <button class="input-btn send-btn" id="sendBtn" onclick="sendChatMessage()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div
+                            style="text-align: center; padding: 0.75rem; font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid var(--border); margin-top: 1rem;">
+                            <p style="margin: 0;">🚀 <strong>AstraGPT</strong> - Powered by Tantra AI Labs</p>
+                            <p style="margin: 0.25rem 0 0 0; opacity: 0.7;">Your AI Coding Assistant • Made with ❤️ in
+                                India</p>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <textarea class="input-box" id="userInput" placeholder="Ask me anything..." rows="1"
-                        onkeydown="handleKeyPress(event)" oninput="autoResize(this)"></textarea>
-                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Artifacts Panel -->
-        <div class="artifacts-panel collapsed" id="artifactsPanel">
-            <div class="artifacts-header">
-                <div class="artifacts-title">📄 Artifacts</div>
-                <button class="close-artifacts" onclick="toggleArtifacts()">×</button>
-            </div>
-            <div class="artifacts-content" id="artifactsContent">
-                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                    No artifacts yet. Code blocks will appear here.
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile Overlay -->
-        <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileMenus()"></div>
+        </main>
     </div>
 
+    <!-- Floating Action Button -->
+    <div class="fab-container">
+        <div class="fab-options" id="fabOptions">
+            <div class="fab-option">
+                <span class="fab-label">New Project</span>
+                <button class="fab-btn primary" onclick="openModal('newProject')">📁</button>
+            </div>
+            <div class="fab-option">
+                <span class="fab-label">AI Suggestions</span>
+                <button class="fab-btn success" onclick="openModal('suggestions')">💡</button>
+            </div>
+            <div class="fab-option">
+                <span class="fab-label">Code Snippets</span>
+                <button class="fab-btn info" onclick="openModal('snippets')">📝</button>
+            </div>
+            <div class="fab-option">
+                <span class="fab-label">Settings</span>
+                <button class="fab-btn warning" onclick="openModal('settings')">⚙️</button>
+            </div>
+            <div class="fab-option">
+                <span class="fab-label">Help</span>
+                <button class="fab-btn danger" onclick="openModal('help')">❓</button>
+            </div>
+        </div>
+        <button class="fab-main" id="fabMain" onclick="toggleFab()">+</button>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Action</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content will be injected here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="handleModalSubmit()">
+                    <span id="submitBtnText">Submit</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
 
     <script>
-        // State Management
-        let conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-        let currentConversationId = null;
+        // API Configuration
+        const API_URL = "https://551a53e01521.ngrok-free.app/chat"; // Your Kaggle Ngrok URL
+
+        // Log API URL on load
+        console.log('🚀 AstraGPT initialized');
+        console.log('📡 API URL:', API_URL);
+
+        // Initialize CodeMirror
+        let editor;
+        let currentModal = null;
         let isProcessing = false;
-        let selectedModel = localStorage.getItem('selectedModel') || 'deepseek-coder:6.7b';
+        let selectedModel = 'deepseek-coder:6.7b';
 
-        // Configure marked.js
-        marked.setOptions({
-            highlight: function (code, lang) {
-                if (Prism.languages[lang]) {
-                    return Prism.highlight(code, Prism.languages[lang], lang);
-                }
-                return code;
-            },
-            breaks: true
-        });
-
-        // Initialize
         window.addEventListener('load', () => {
             // Load saved model preference
-            document.getElementById('modelSelector').value = selectedModel;
+            const savedModel = localStorage.getItem('selectedModel');
+            if (savedModel) {
+                selectedModel = savedModel;
+                document.getElementById('modelSelector').value = savedModel;
+            }
 
-            loadChatHistory();
-            if (conversations.length === 0) {
-                createNewChat();
-            } else {
-                loadConversation(conversations[0].id);
+            editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+                mode: 'python',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                indentWithTabs: false,
+                lineWrapping: true
+            });
+
+            // Update stats on change
+            editor.on('change', updateEditorStats);
+            editor.on('cursorActivity', updateCursorPosition);
+
+            // Initialize stats
+            updateEditorStats();
+            updateCursorPosition();
+
+            // Configure marked.js
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true
+                });
             }
         });
 
-        // Model Selection Handler
+        // Editor Functions
+        function changeLanguage() {
+            const lang = document.getElementById('languageSelector').value;
+            const modes = {
+                'python': 'python',
+                'javascript': 'javascript',
+                'java': 'text/x-java',
+                'cpp': 'text/x-c++src',
+                'html': 'htmlmixed',
+                'css': 'css'
+            };
+            editor.setOption('mode', modes[lang]);
+            document.getElementById('currentLang').textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+        }
+
+        function updateEditorStats() {
+            const code = editor.getValue();
+            const lines = code.split('\n').length;
+            const chars = code.length;
+
+            document.getElementById('lineCount').textContent = lines;
+            document.getElementById('charCount').textContent = chars;
+        }
+
+        function updateCursorPosition() {
+            const cursor = editor.getCursor();
+            document.getElementById('cursorLine').textContent = cursor.line + 1;
+            document.getElementById('cursorCol').textContent = cursor.ch + 1;
+        }
+
+        function formatCode() {
+            const code = editor.getValue();
+            addChatMessage('ai', '✨ Code formatted successfully!');
+        }
+
+        async function analyzeCode() {
+            const code = editor.getValue();
+            if (!code.trim()) {
+                addChatMessage('ai', '⚠️ Please write some code first!');
+                return;
+            }
+
+            const message = `Analyze this code and provide detailed feedback:\n\`\`\`python\n${code}\n\`\`\``;
+            document.getElementById('chatInput').value = message;
+            await sendChatMessage();
+        }
+
+        async function optimizeCode() {
+            const code = editor.getValue();
+            if (!code.trim()) {
+                addChatMessage('ai', '⚠️ Please write some code first!');
+                return;
+            }
+
+            const message = `Optimize this code for better performance:\n\`\`\`python\n${code}\n\`\`\``;
+            document.getElementById('chatInput').value = message;
+            await sendChatMessage();
+        }
+
+        async function debugCode() {
+            const code = editor.getValue();
+            if (!code.trim()) {
+                addChatMessage('ai', '⚠️ Please write some code first!');
+                return;
+            }
+
+            const message = `Debug this code and find any bugs or issues:\n\`\`\`python\n${code}\n\`\`\``;
+            document.getElementById('chatInput').value = message;
+            await sendChatMessage();
+        }
+
+        async function runCode() {
+            const code = editor.getValue();
+            if (!code.trim()) {
+                addChatMessage('ai', '⚠️ Please write some code first!');
+                return;
+            }
+
+            const message = `Execute this code and show the output:\n\`\`\`python\n${code}\n\`\`\``;
+            document.getElementById('chatInput').value = message;
+            await sendChatMessage();
+        }
+
+        function newFile() {
+            if (confirm('Create a new file?')) {
+                editor.setValue('# New file\n\n');
+            }
+        }
+
+        // Chat Functions
         function handleModelChange() {
             const selector = document.getElementById('modelSelector');
             selectedModel = selector.value;
             localStorage.setItem('selectedModel', selectedModel);
-
-            const modelName = selector.options[selector.selectedIndex].text;
-            console.log('Model switched to:', modelName);
+            console.log('Model switched to:', selectedModel);
         }
 
-        // Chat Management
-        function createNewChat() {
-            const newChat = {
-                id: Date.now().toString(),
-                title: 'New Chat',
-                messages: [],
-                createdAt: new Date().toISOString()
-            };
-            conversations.unshift(newChat);
-            saveConversations();
-            loadConversation(newChat.id);
-            loadChatHistory();
-        }
-
-        function loadConversation(id) {
-            currentConversationId = id;
-            const conv = conversations.find(c => c.id === id);
-            if (!conv) return;
-
-            document.getElementById('chatTitle').textContent = conv.title;
-            document.getElementById('chatMessages').innerHTML = '';
-
-            if (conv.messages.length === 0) {
-                showEmptyState();
-            } else {
-                hideEmptyState();
-                conv.messages.forEach(msg => {
-                    addMessageToUI(msg.role, msg.content);
-                });
-            }
-
-            updateChatHistoryUI();
-        }
-
-        function saveConversations() {
-            localStorage.setItem('conversations', JSON.stringify(conversations));
-        }
-
-        function loadChatHistory() {
-            const historyEl = document.getElementById('chatHistory');
-            historyEl.innerHTML = conversations.map(conv => `
-                <div class="chat-item ${conv.id === currentConversationId ? 'active' : ''}" 
-                     onclick="loadConversation('${conv.id}')">
-                    <div class="chat-item-title">${conv.title}</div>
-                    <div class="chat-item-actions">
-                        <button class="chat-item-btn" onclick="event.stopPropagation(); renameChat('${conv.id}')">✏️</button>
-                        <button class="chat-item-btn" onclick="event.stopPropagation(); deleteChat('${conv.id}')">🗑️</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function updateChatHistoryUI() {
-            loadChatHistory();
-        }
-
-        function renameChat(id) {
-            const conv = conversations.find(c => c.id === id);
-            const newTitle = prompt('Enter new title:', conv.title);
-            if (newTitle && newTitle.trim()) {
-                conv.title = newTitle.trim();
-                saveConversations();
-                if (id === currentConversationId) {
-                    document.getElementById('chatTitle').textContent = newTitle;
-                }
-                loadChatHistory();
-            }
-        }
-
-        function deleteChat(id) {
-            if (!confirm('Delete this conversation?')) return;
-            conversations = conversations.filter(c => c.id !== id);
-            saveConversations();
-            if (id === currentConversationId) {
-                if (conversations.length > 0) {
-                    loadConversation(conversations[0].id);
-                } else {
-                    createNewChat();
-                }
-            }
-            loadChatHistory();
-        }
-
-        // UI Helpers
-        function showEmptyState() {
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
-            empty.id = 'emptyState';
-            empty.innerHTML = `
-                <h1>Welcome to AstraGPT</h1>
-                <p>Your AI coding assistant powered by Tantra AI Labs</p>
-                <div class="example-prompts">
-                    <div class="example-card" onclick="useExample('Write a Python function to reverse a string')">
-                        <h3>💻 Code Generation</h3>
-                        <p>Write a Python function</p>
-                    </div>
-                    <div class="example-card" onclick="useExample('Explain async/await in JavaScript')">
-                        <h3>📚 Explanations</h3>
-                        <p>Explain concepts</p>
-                    </div>
-                    <div class="example-card" onclick="useExample('Debug this code')">
-                        <h3>🐛 Debugging</h3>
-                        <p>Help fix errors</p>
-                    </div>
-                </div>
-            `;
-            document.getElementById('chatMessages').appendChild(empty);
-        }
-
-        function hideEmptyState() {
-            const empty = document.getElementById('emptyState');
+        function addChatMessage(role, content) {
+            const empty = document.querySelector('.empty-state');
             if (empty) empty.remove();
-        }
 
-        function useExample(text) {
-            document.getElementById('userInput').value = text;
-            document.getElementById('userInput').focus();
-            autoResize(document.getElementById('userInput'));
-        }
-
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
-        }
-
-        // Message Handling
-        function addMessageToUI(role, content, isError = false) {
-            hideEmptyState();
             const messagesEl = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
@@ -900,237 +1458,394 @@
                     <div class="avatar ${role}">${avatar}</div>
                     <div style="font-weight: 600;">${roleName}</div>
                 </div>
-                <div class="message-content"></div>
+                <div class="message-content">${marked ? marked.parse(content) : content}</div>
             `;
 
             messagesEl.appendChild(messageDiv);
-            const contentDiv = messageDiv.querySelector('.message-content');
-            contentDiv.innerHTML = renderMarkdown(content);
-
-            // Highlight code
-            contentDiv.querySelectorAll('pre code').forEach(block => {
-                Prism.highlightElement(block);
-                extractArtifact(block);
-            });
-
             messagesEl.scrollTop = messagesEl.scrollHeight;
-            return contentDiv;
-        }
 
-        function renderMarkdown(text) {
-            let html = marked.parse(text);
-            html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
-                (match, lang, code) => {
-                    return `<pre><code class="language-${lang}">${code}</code><button class="copy-btn" onclick="copyCode(this)">Copy</button></pre>`;
+            // Highlight code blocks
+            messageDiv.querySelectorAll('pre code').forEach(block => {
+                if (typeof Prism !== 'undefined') {
+                    Prism.highlightElement(block);
                 }
-            );
-            return html;
-        }
-
-        function copyCode(btn) {
-            const code = btn.previousElementSibling.textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = 'Copy', 2000);
             });
         }
 
-        // Artifacts
-        function extractArtifact(codeBlock) {
-            const lang = codeBlock.className.match(/language-(\w+)/)?.[1] || 'text';
-            const code = codeBlock.textContent;
-
-            const artifactsContent = document.getElementById('artifactsContent');
-            if (artifactsContent.children[0]?.textContent.includes('No artifacts')) {
-                artifactsContent.innerHTML = '';
-            }
-
-            const artifactDiv = document.createElement('div');
-            artifactDiv.className = 'artifact-item';
-            artifactDiv.innerHTML = `
-                <div class="artifact-header">
-                    <div class="artifact-type">${lang.toUpperCase()}</div>
-                    <div class="artifact-actions">
-                        <button class="artifact-btn" onclick="copyArtifact(this)">Copy</button>
-                        <button class="artifact-btn" onclick="downloadArtifact(this, '${lang}')">Download</button>
-                    </div>
-                </div>
-                <div class="artifact-code"><code class="language-${lang}">${code}</code></div>
-            `;
-
-            artifactsContent.appendChild(artifactDiv);
-            Prism.highlightElement(artifactDiv.querySelector('code'));
-        }
-
-        function copyArtifact(btn) {
-            const code = btn.closest('.artifact-item').querySelector('code').textContent;
-            navigator.clipboard.writeText(code);
-            btn.textContent = 'Copied!';
-            setTimeout(() => btn.textContent = 'Copy', 2000);
-        }
-
-        function downloadArtifact(btn, lang) {
-            const code = btn.closest('.artifact-item').querySelector('code').textContent;
-            const blob = new Blob([code], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `code.${lang}`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function toggleArtifacts() {
-            document.getElementById('artifactsPanel').classList.toggle('collapsed');
-        }
-
-        // API Configuration
-        const API_URL = "https://343dbd1e2545.ngrok-free.app/chat"; // Kaggle Ngrok URL
-
-        // Chat Actions
-        async function sendMessage() {
-            const input = document.getElementById('userInput');
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
             const message = input.value.trim();
             if (!message || isProcessing) return;
 
+            console.log('📤 Sending message:', message);
+            console.log('🤖 Using model:', selectedModel);
+
             isProcessing = true;
-            document.getElementById('sendBtn').disabled = true;
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
 
-            // Add to conversation
-            const conv = conversations.find(c => c.id === currentConversationId);
-            conv.messages.push({ role: 'user', content: message });
-
-            // Update title if first message
-            if (conv.messages.length === 1) {
-                conv.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
-                document.getElementById('chatTitle').textContent = conv.title;
-                updateChatHistoryUI();
-            }
-
-            addMessageToUI('user', message);
+            // Clear input and add user message
+            addChatMessage('user', message);
             input.value = '';
             autoResize(input);
 
-            // Create placeholder for AI response
-            const contentDiv = addMessageToUI('ai', '<span class="cursor">|</span>');
-            let fullResponse = "";
+            // Create temporary thinking message container
+            const messagesEl = document.getElementById('chatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'message thinking-message';
+            thinkingDiv.innerHTML = `
+                <div class="message-header">
+                    <div class="avatar ai">🤖</div>
+                    <div style="font-weight: 600;">AstraGPT</div>
+                </div>
+                <div class="message-content">💭 Thinking...</div>
+            `;
+            messagesEl.appendChild(thinkingDiv);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
 
             try {
+                console.log('🌐 Making API request to:', API_URL);
+
+                const requestBody = {
+                    message: message,
+                    model_name: selectedModel,
+                    user_id: 'web_user_' + Math.random().toString(36).substr(2, 9)
+                };
+
+                console.log('📦 Request body:', requestBody);
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'ngrok-skip-browser-warning': 'true'
                     },
-                    body: JSON.stringify({
-                        message,
-                        model_name: selectedModel,
-                        user_id: 'web_user_' + Math.random().toString(36).substr(2, 9)
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
-                if (!response.ok) throw new Error('Server error: ' + response.statusText);
+                console.log('📥 Response status:', response.status);
 
-                const data = await response.json();
-                fullResponse = data.response;
+                // Remove thinking message
+                thinkingDiv.remove();
 
-                if (data.blocked) {
-                    fullResponse = `**Message Blocked:** ${data.reason}`;
+                if (!response.ok) {
+                    throw new Error('Server returned ' + response.status);
                 }
 
-                // Update UI
-                contentDiv.innerHTML = renderMarkdown(fullResponse);
+                const data = await response.json();
+                console.log('✅ API Response:', data);
 
-                // Re-highlight code blocks
-                contentDiv.querySelectorAll('pre code').forEach(block => {
-                    Prism.highlightElement(block);
-                });
+                let aiResponse = data.response || 'No response received';
 
-                // Scroll to bottom
-                const messagesEl = document.getElementById('chatMessages');
-                messagesEl.scrollTop = messagesEl.scrollHeight;
+                if (data.blocked) {
+                    aiResponse = `**⚠️ Message Blocked:** ${data.reason}`;
+                }
 
-                // Finalize
-                conv.messages.push({ role: 'assistant', content: fullResponse });
-                saveConversations();
+                // Add actual AI response
+                addChatMessage('ai', aiResponse);
 
             } catch (error) {
-                contentDiv.innerHTML += `\n\n❌ Error: ${error.message}`;
-                conv.messages.push({ role: 'assistant', content: fullResponse }); // Save what we got
+                // Remove thinking message
+                thinkingDiv.remove();
+
+                console.error('❌ API Error:', error);
+
+                // Show error message
+                addChatMessage('ai', `❌ **Connection Error**\n\nCouldn't connect to the AI server.\n\n**Details:** ${error.message}\n\n**Please check:**\n- Is your ngrok server running?\n- Is the URL correct?\n- Check browser console for details`);
             } finally {
                 isProcessing = false;
-                document.getElementById('sendBtn').disabled = false;
+                sendBtn.disabled = false;
                 input.focus();
             }
         }
 
-        function shareChat() {
-            const conv = conversations.find(c => c.id === currentConversationId);
-            const shareData = {
-                title: conv.title,
-                messages: conv.messages
-            };
-            const encoded = btoa(JSON.stringify(shareData));
-            const url = `${window.location.origin}?share=${encoded}`;
-
-            navigator.clipboard.writeText(url).then(() => {
-                alert('Share link copied to clipboard!');
-            });
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
         }
 
-        function exportChat() {
-            const conv = conversations.find(c => c.id === currentConversationId);
-            const markdown = conv.messages.map(m =>
-                `**${m.role === 'user' ? 'You' : 'AstraGPT'}:**\n${m.content}\n`
-            ).join('\n---\n\n');
-
-            const blob = new Blob([markdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${conv.title}.md`;
-            a.click();
-            URL.revokeObjectURL(url);
+        function useExample(text) {
+            document.getElementById('chatInput').value = text;
+            document.getElementById('chatInput').focus();
         }
 
-        // Mobile
+        function attachCode() {
+            const code = editor.getValue();
+            const input = document.getElementById('chatInput');
+            input.value = `Here's my code:\n\`\`\`python\n${code}\n\`\`\`\n\n`;
+            input.focus();
+            autoResize(input);
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        }
+
+        // FAB Functions
+        function toggleFab() {
+            const fabMain = document.getElementById('fabMain');
+            const fabOptions = document.getElementById('fabOptions');
+            fabMain.classList.toggle('active');
+            fabOptions.classList.toggle('active');
+        }
+
+        // Modal Functions
+        function openModal(type) {
+            currentModal = type;
+            const overlay = document.getElementById('modalOverlay');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const submitBtnText = document.getElementById('submitBtnText');
+
+            let title = '';
+            let content = '';
+            let submitText = 'Submit';
+
+            switch (type) {
+                case 'newProject':
+                    title = 'Create New Project';
+                    submitText = 'Create';
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Project Name</label>
+                            <input type="text" class="form-input" placeholder="my-awesome-project">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Template</label>
+                            <select class="form-select">
+                                <option>Python Flask App</option>
+                                <option>Node.js Express</option>
+                                <option>React App</option>
+                                <option>Django Project</option>
+                                <option>Blank Project</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-textarea" placeholder="What's your project about?"></textarea>
+                        </div>
+                    `;
+                    break;
+
+                case 'suggestions':
+                    title = 'AI Code Suggestions';
+                    submitText = 'Apply';
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Suggestion Type</label>
+                            <select class="form-select">
+                                <option>Performance Optimization</option>
+                                <option>Code Quality</option>
+                                <option>Security Improvements</option>
+                                <option>Best Practices</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Focus Area</label>
+                            <select class="form-select">
+                                <option>Current File</option>
+                                <option>Selected Code</option>
+                                <option>Entire Project</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+
+                case 'snippets':
+                    title = 'Code Snippets Library';
+                    submitText = 'Insert';
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Category</label>
+                            <select class="form-select">
+                                <option>Data Structures</option>
+                                <option>Algorithms</option>
+                                <option>API Templates</option>
+                                <option>Database Queries</option>
+                                <option>File Operations</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Search Snippets</label>
+                            <input type="text" class="form-input" placeholder="e.g., binary search">
+                        </div>
+                    `;
+                    break;
+
+                case 'settings':
+                    title = 'Editor Settings';
+                    submitText = 'Save';
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Theme</label>
+                            <select class="form-select">
+                                <option>Monokai</option>
+                                <option>Dracula</option>
+                                <option>VS Code Dark</option>
+                                <option>GitHub Light</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Font Size</label>
+                            <input type="number" class="form-input" value="14" min="10" max="24">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tab Size</label>
+                            <input type="number" class="form-input" value="4" min="2" max="8">
+                        </div>
+                    `;
+                    break;
+
+                case 'deploy':
+                    title = 'Deploy Your Code';
+                    submitText = 'Deploy Now';
+                    content = `
+                        <div class="form-group">
+                            <label class="form-label">Platform</label>
+                            <select class="form-select">
+                                <option>Heroku</option>
+                                <option>AWS</option>
+                                <option>Google Cloud</option>
+                                <option>Azure</option>
+                                <option>Vercel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Environment</label>
+                            <select class="form-select">
+                                <option>Production</option>
+                                <option>Staging</option>
+                                <option>Development</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+
+                case 'help':
+                    title = 'Help & Documentation';
+                    submitText = 'Got It';
+                    content = `
+                        <div style="padding: 1rem;">
+                            <h3 style="margin-bottom: 1rem;">Quick Start Guide</h3>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="padding: 0.5rem 0;">📝 Write code in the left editor</li>
+                                <li style="padding: 0.5rem 0;">💬 Ask AI questions on the right</li>
+                                <li style="padding: 0.5rem 0;">▶️ Run code with the play button</li>
+                                <li style="padding: 0.5rem 0;">🚀 Deploy when ready</li>
+                            </ul>
+                        </div>
+                    `;
+                    break;
+            }
+
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            submitBtnText.textContent = submitText;
+            overlay.classList.add('active');
+
+            // Close FAB
+            document.getElementById('fabMain').classList.remove('active');
+            document.getElementById('fabOptions').classList.remove('active');
+        }
+
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('modalOverlay').classList.remove('active');
+            currentModal = null;
+        }
+
+        function handleModalSubmit() {
+            alert('Action completed!');
+            closeModal();
+        }
+
+        // Sidebar
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('collapsed');
             document.getElementById('mobileOverlay').classList.toggle('active');
         }
 
-        function closeMobileMenus() {
-            document.getElementById('sidebar').classList.add('collapsed');
-            document.getElementById('artifactsPanel').classList.add('collapsed');
-            document.getElementById('mobileOverlay').classList.remove('active');
-        }
+        function toggleCodeEditor() {
+            const editorPanel = document.querySelector('.code-editor-panel');
+            const resizer = document.querySelector('.resizer');
 
-        // Load shared chat
-        const urlParams = new URLSearchParams(window.location.search);
-        const sharedData = urlParams.get('share');
-        if (sharedData) {
-            try {
-                const data = JSON.parse(atob(sharedData));
-                const newChat = {
-                    id: Date.now().toString(),
-                    title: data.title + ' (Shared)',
-                    messages: data.messages,
-                    createdAt: new Date().toISOString()
-                };
-                conversations.unshift(newChat);
-                saveConversations();
-                loadConversation(newChat.id);
-                loadChatHistory();
-            } catch (e) {
-                console.error('Invalid share link');
+            editorPanel.classList.toggle('active');
+            resizer.classList.toggle('active');
+
+            // Refresh CodeMirror when shown
+            if (editorPanel.classList.contains('active')) {
+                setTimeout(() => {
+                    editor.refresh();
+                }, 100);
+            }
+
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
             }
         }
+
+        function switchView(view) {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+            }
+        }
+
+        // Resizer
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.querySelector('.code-editor-panel');
+        const rightPanel = document.querySelector('.chat-panel');
+
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+
+        function handleMouseMove(e) {
+            if (!isResizing) return;
+
+            const container = document.querySelector('.split-view');
+            const containerRect = container.getBoundingClientRect();
+            const leftWidth = e.clientX - containerRect.left;
+            const leftPercent = (leftWidth / containerRect.width) * 100;
+
+            if (leftPercent > 30 && leftPercent < 70) {
+                leftPanel.style.flex = `0 0 ${leftPercent}%`;
+                rightPanel.style.flex = `1`;
+            }
+        }
+
+        function handleMouseUp() {
+            isResizing = false;
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+S to save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                alert('Code saved!');
+            }
+            // Ctrl+R to run
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                runCode();
+            }
+        });
     </script>
 </body>
 
 </html>
-
-
-
-
-
