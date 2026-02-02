@@ -1022,6 +1022,98 @@
             color: var(--text-secondary);
             margin: 0;
         }
+
+        /* =======================================================
+   📱 MOBILE-FIRST CHAT MODE (ASTRAGPT)
+   ======================================================= */
+@media (max-width: 768px) {
+
+  /* Hide heavy desktop stuff */
+  .code-editor-panel,
+  .resizer,
+  .fab-container {
+    display: none !important;
+  }
+
+  /* Sidebar hidden by default */
+  .sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 300;
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  /* Main content full width */
+  .main-content {
+    width: 100%;
+  }
+
+  /* Chat panel full screen */
+  .chat-panel {
+    width: 100% !important;
+    flex: 1;
+  }
+
+  /* Bigger readable text */
+  body {
+    font-size: 16px;
+  }
+
+  .message-content {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* Header simplified */
+  .top-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .page-title h1 {
+    font-size: 1.1rem;
+  }
+
+  .page-title p {
+    display: none;
+  }
+
+  /* Chat messages padding */
+  .chat-messages {
+    padding: 1rem;
+  }
+
+  /* Input fixed at bottom (WhatsApp feel) */
+  .chat-input-container {
+    position: sticky;
+    bottom: 0;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    z-index: 50;
+  }
+
+  .chat-input {
+    font-size: 16px;
+    padding: 0.9rem 7rem 0.9rem 1rem;
+  }
+
+  /* Buttons bigger (touch friendly) */
+  .input-btn,
+  .send-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  /* Avatars slightly bigger */
+  .avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+}
+
     </style>
 </head>
 
@@ -1838,6 +1930,7 @@ if __name__ == "__main__":
 </body>
 
 </html>
+
 
 
 
