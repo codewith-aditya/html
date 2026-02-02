@@ -1472,112 +1472,101 @@ if __name__ == "__main__":
             });
         }
 
-        async function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-            if (!message || isProcessing) return;
+       async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message || isProcessing) return;
 
-            console.log('📤 Sending message:', message);
-            console.log('🤖 Using model:', selectedModel);
+    isProcessing = true;
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
 
-            isProcessing = true;
-            const sendBtn = document.getElementById('sendBtn');
-            sendBtn.disabled = true;
+    // User message
+    addChatMessage('user', message);
+    input.value = '';
+    autoResize(input);
 
-            // Clear input and add user message
-            addChatMessage('user', message);
-            input.value = '';
-            autoResize(input);
+    const messagesEl = document.getElementById('chatMessages');
 
-            // Create temporary thinking message container
-            const messagesEl = document.getElementById('chatMessages');
-            const thinkingDiv = document.createElement('div');
-            thinkingDiv.className = 'message thinking-message';
-            thinkingDiv.innerHTML = `
-                <div class="message-header">
-                    <div class="avatar ai">🤖</div>
-                    <div style="font-weight: 600;">AstraGPT</div>
-                </div>
-                <div class="message-content">💭 Thinking...</div>
-            `;
-            messagesEl.appendChild(thinkingDiv);
+    // Thinking message
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.className = 'message';
+    thinkingDiv.innerHTML = `
+        <div class="message-header">
+            <div class="avatar ai">🤖</div>
+            <div style="font-weight:600;">AstraGPT</div>
+        </div>
+        <div class="message-content">💭 Thinking...</div>
+    `;
+    messagesEl.appendChild(thinkingDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: JSON.stringify({
+                message: message,
+                model_name: selectedModel
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Server error ' + response.status);
+        }
+
+        // Remove thinking
+        thinkingDiv.remove();
+
+        // Create AI streaming message
+        const aiDiv = document.createElement('div');
+        aiDiv.className = 'message';
+        aiDiv.innerHTML = `
+            <div class="message-header">
+                <div class="avatar ai">🤖</div>
+                <div style="font-weight:600;">AstraGPT</div>
+            </div>
+            <div class="message-content" id="streamingContent"></div>
+        `;
+        messagesEl.appendChild(aiDiv);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        const contentDiv = aiDiv.querySelector('#streamingContent');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let fullText = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            fullText += chunk;
+
+            contentDiv.innerHTML = marked
+                ? marked.parse(fullText)
+                : fullText;
+
             messagesEl.scrollTop = messagesEl.scrollHeight;
-
-            try {
-                console.log('🌐 Making API request to:', API_URL);
-
-                const requestBody = {
-                    message: message,
-                    model_name: selectedModel,
-                    user_id: 'web_user_' + Math.random().toString(36).substr(2, 9)
-                };
-
-                console.log('📦 Request body:', requestBody);
-
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                console.log('📥 Response status:', response.status);
-
-                // Remove thinking message
-                thinkingDiv.remove();
-
-                if (!response.ok) {
-                    throw new Error('Server returned ' + response.status);
-                }
-
-                const data = await response.json();
-                console.log('✅ API Response:', data);
-
-                let aiResponse = data.response || 'No response received';
-
-                if (data.blocked) {
-                    aiResponse = `**⚠️ Message Blocked:** ${data.reason}`;
-                }
-
-                // Add actual AI response
-                addChatMessage('ai', aiResponse);
-
-            } catch (error) {
-                // Remove thinking message
-                thinkingDiv.remove();
-
-                console.error('❌ API Error:', error);
-
-                // Show error message
-                addChatMessage('ai', `❌ **Connection Error**\n\nCouldn't connect to the AI server.\n\n**Details:** ${error.message}\n\n**Please check:**\n- Is your ngrok server running?\n- Is the URL correct?\n- Check browser console for details`);
-            } finally {
-                isProcessing = false;
-                sendBtn.disabled = false;
-                input.focus();
-            }
         }
 
-        function handleChatKeyPress(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendChatMessage();
-            }
-        }
+    } catch (error) {
+        thinkingDiv.remove();
+        addChatMessage(
+            'ai',
+            `❌ **Connection Error**\n\n${error.message}`
+        );
+    } finally {
+        isProcessing = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
 
-        function useExample(text) {
-            document.getElementById('chatInput').value = text;
-            document.getElementById('chatInput').focus();
-        }
-
-        function attachCode() {
-            const code = editor.getValue();
-            const input = document.getElementById('chatInput');
-            input.value = `Here's my code:\n\`\`\`python\n${code}\n\`\`\`\n\n`;
-            input.focus();
-            autoResize(input);
-        }
 
         function autoResize(textarea) {
             textarea.style.height = 'auto';
@@ -1849,6 +1838,7 @@ if __name__ == "__main__":
 </body>
 
 </html>
+
 
 
 
